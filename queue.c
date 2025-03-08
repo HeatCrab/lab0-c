@@ -7,21 +7,60 @@
 /* Create an empty queue */
 struct list_head *q_new()
 {
-    return NULL;
+    struct list_head *new = malloc(sizeof(struct list_head));
+    if (!new)
+        return NULL;
+    /* 善用 list.h 中的函式 */
+    INIT_LIST_HEAD(new);
+    return new;
 }
 
 /* Free all storage used by queue */
-void q_free(struct list_head *head) {}
+void q_free(struct list_head *head)
+{
+    if (!head)
+        return;
+    struct list_head *node, *safe;
+    list_for_each_safe (node, safe, head) {
+        element_t *e = list_entry(node, element_t, list);
+        /* 使用 queue.h 中的函式替代直接呼叫 free() */
+        q_release_element(e);
+    }
+    test_free(head);
+}
 
 /* Insert an element at head of queue */
 bool q_insert_head(struct list_head *head, char *s)
 {
+    if (!head)
+        return false;
+    element_t *new_element = malloc(sizeof(element_t));
+    if (!new_element)
+        return false;
+    new_element->value = strdup(s);
+    /* 再次檢查是否有記憶體上的問題發生 */
+    if (!new_element->value) {
+        free(new_element);
+        return false;
+    }
+    list_add(&new_element->list, head);
     return true;
 }
 
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
+    if (!head)
+        return false;
+    element_t *new_element = malloc(sizeof(element_t));
+    if (!new_element)
+        return false;
+    new_element->value = strdup(s);
+    if (!new_element->value) {
+        free(new_element);
+        return false;
+    }
+    list_add_tail(&new_element->list, head);
     return true;
 }
 
@@ -40,14 +79,15 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 /* Return number of elements in queue */
 int q_size(struct list_head *head)
 {
-    if (!head)
+    if (!head || list_empty(head))
         return 0;
 
     int len = 0;
-    struct list_head *li;
+    struct list_head *node;
 
-    list_for_each (li, head)
+    list_for_each (node, head)
         len++;
+
     return len;
 }
 
@@ -106,4 +146,3 @@ int q_merge(struct list_head *head, bool descend)
     // https://leetcode.com/problems/merge-k-sorted-lists/
     return 0;
 }
-
