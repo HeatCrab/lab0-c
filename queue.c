@@ -152,18 +152,30 @@ bool q_delete_dup(struct list_head *head)
     if (list_is_singular(head))
         return true;
 
-    struct list_head *node, *safe;
-    const element_t *prev = NULL;
+    LIST_HEAD(to_discard);
+    element_t *curr = NULL, *safe = NULL;  // 顯式初始化避免警告
+    struct list_head *last_unique = head;
 
-    list_for_each_safe (node, safe, head) {
-        element_t *curr = list_entry(node, element_t, list);
-        if (prev && strcmp(prev->value, curr->value) == 0) {
-            list_del(&curr->list);
-            q_release_element(curr);
-        } else {
-            prev = curr;
+    list_for_each_entry_safe (curr, safe, head, list) {
+        // 如果 safe 不是 head 且與 curr 值相同，跳過，表示仍在重複區段內
+        if (&safe->list != head && !strcmp(safe->value, curr->value))
+            continue;
+
+        // 如果 curr 的前一個節點不是 last_unique，表示有重複節點
+        if (curr->list.prev != last_unique) {
+            /* 臨時存放切割出的重複區段 */
+            LIST_HEAD(tmp);
+            /* 切割重複區段 */
+            list_cut_position(&tmp, last_unique, &curr->list);
+            /* 將重複區段加入待丟棄列表 */
+            list_splice(&tmp, &to_discard);
         }
+        last_unique = safe->list.prev;  // 更新
     }
+
+    // 釋放所有待丟棄的重複節點
+    list_for_each_entry_safe (curr, safe, &to_discard, list)
+        q_release_element(curr);
 
     return true;
 }
@@ -172,15 +184,58 @@ bool q_delete_dup(struct list_head *head)
 void q_swap(struct list_head *head)
 {
     // https://leetcode.com/problems/swap-nodes-in-pairs/
+
+    if (!head || list_empty(head) || list_is_singular(head))
+        return;
+
+    struct list_head *node = head->next;
+    while (node != head && node->next != head) {
+        struct list_head *next = node->next;
+        list_move(node, &next);
+        node = next->next;
+    }
 }
 
 /* Reverse elements in queue */
-void q_reverse(struct list_head *head) {}
+void q_reverse(struct list_head *head)
+{
+    if (!head || list_empty(head))
+        return;
 
-/* Reverse the nodes of the list k at a time */
+    LIST_HEAD(new_head);
+
+    struct list_head *node, *safe;
+    list_for_each_safe (node, safe, head) {
+        list_move(node, &new_head);
+    }
+
+    /* 將反轉後的串鏈拼接到原始 head */
+    list_splice(&new_head, head);
+}
+
 void q_reverseK(struct list_head *head, int k)
 {
     // https://leetcode.com/problems/reverse-nodes-in-k-group/
+
+    if (!head || list_empty(head) || list_is_singular(head))
+        return;
+
+    struct list_head *curr = head->next;
+    int count = q_size(head);
+
+    while (count >= k) {
+        LIST_HEAD(tmp);
+        struct list_head *prev = head;
+
+        for (int i = 0; i < k; i++) {
+            struct list_head *next_node = curr->next;
+            list_move(curr, &tmp);
+            curr = next_node;
+        }
+
+        list_splice(&tmp, prev);
+        count -= k;
+    }
 }
 
 /* Sort elements of queue in ascending/descending order */
