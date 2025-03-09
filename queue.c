@@ -153,15 +153,14 @@ bool q_delete_dup(struct list_head *head)
         return true;
 
     LIST_HEAD(to_discard);
-    element_t *curr = NULL, *safe = NULL;  // 顯式初始化避免警告
+    element_t *curr = NULL, *safe = NULL;
     struct list_head *last_unique = head;
 
     list_for_each_entry_safe (curr, safe, head, list) {
-        // 如果 safe 不是 head 且與 curr 值相同，跳過，表示仍在重複區段內
+        /* 如果 safe 不是 head 且與 curr 值相同，跳過，表示仍在重複區段內 */
         if (&safe->list != head && !strcmp(safe->value, curr->value))
             continue;
 
-        // 如果 curr 的前一個節點不是 last_unique，表示有重複節點
         if (curr->list.prev != last_unique) {
             /* 臨時存放切割出的重複區段 */
             LIST_HEAD(tmp);
@@ -173,7 +172,6 @@ bool q_delete_dup(struct list_head *head)
         last_unique = safe->list.prev;  // 更新
     }
 
-    // 釋放所有待丟棄的重複節點
     list_for_each_entry_safe (curr, safe, &to_discard, list)
         q_release_element(curr);
 
@@ -249,15 +247,63 @@ void q_sort(struct list_head *head, bool descend) {}
 int q_ascend(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    return 0;
+
+    if (!head || list_empty(head))
+        return 0;
+
+    if (list_is_singular(head))
+        return 1;
+
+    LIST_HEAD(stack);
+    struct list_head *node, *safe;
+
+    list_for_each_safe (node, safe, head) {
+        const element_t *curr = list_entry(node, element_t, list);
+        while (!list_empty(&stack)) {
+            element_t *top = list_last_entry(&stack, element_t, list);
+            if (strcmp(curr->value, top->value) < 0) {
+                list_del(&top->list);
+                q_release_element(top);
+            } else {
+                break;
+            }
+        }
+        list_move(node, &stack);
+    }
+
+    list_splice_init(&stack, head);
+    return q_size(head);
 }
 
-/* Remove every node which has a node with a strictly greater value anywhere to
- * the right side of it */
 int q_descend(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    return 0;
+
+    if (!head || list_empty(head))
+        return 0;
+
+    if (list_is_singular(head))
+        return 1;
+
+    LIST_HEAD(stack);
+    struct list_head *node, *safe;
+
+    list_for_each_safe (node, safe, head) {
+        const element_t *curr = list_entry(node, element_t, list);
+        while (!list_empty(&stack)) {
+            element_t *top = list_last_entry(&stack, element_t, list);
+            if (strcmp(curr->value, top->value) > 0) {
+                list_del(&top->list);
+                q_release_element(top);
+            } else {
+                break;
+            }
+        }
+        list_move(node, &stack);
+    }
+
+    list_splice_init(&stack, head);
+    return q_size(head);
 }
 
 /* Merge all the queues into one sorted queue, which is in ascending/descending
