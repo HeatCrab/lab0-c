@@ -178,39 +178,20 @@ bool q_delete_dup(struct list_head *head)
     return true;
 }
 
-/* Swap every two adjacent nodes */
-void q_swap(struct list_head *head)
-{
-    // https://leetcode.com/problems/swap-nodes-in-pairs/
-
-    if (!head || list_empty(head) || list_is_singular(head))
-        return;
-
-    struct list_head *node = head->next;
-    while (node != head && node->next != head) {
-        struct list_head *next = node->next;
-        struct list_head *next_next = next->next;
-
-        list_del(node);
-        list_add(node, next);
-        node = next_next;
-    }
-}
-
 /* Reverse elements in queue */
 void q_reverse(struct list_head *head)
 {
     if (!head || list_empty(head))
         return;
 
-    LIST_HEAD(new_head);
+    // LIST_HEAD(new_head);
 
     struct list_head *node, *safe;
     list_for_each_safe (node, safe, head)
         list_move(node, head);
 
     /* 將反轉後的串鏈拼接到原始 head */
-    list_splice(&new_head, head);
+    // list_splice(&new_head, head);
 }
 
 /* Reverse the nodes of the list k at a time */
@@ -240,6 +221,28 @@ void q_reverseK(struct list_head *head, int k)
 
         count -= k;
     }
+}
+
+/* Swap every two adjacent nodes */
+void q_swap(struct list_head *head)
+{
+    // https://leetcode.com/problems/swap-nodes-in-pairs/
+
+    q_reverseK(head, 2);
+    /*
+    if (!head || list_empty(head) || list_is_singular(head))
+        return;
+
+    struct list_head *node = head->next;
+    while (node != head && node->next != head) {
+        struct list_head *next = node->next;
+        struct list_head *next_next = next->next;
+
+        list_del(node);
+        list_add(node, next);
+        node = next_next;
+    }
+    */
 }
 
 /* Merges two sorted circular doubly-linked lists into 'left'
