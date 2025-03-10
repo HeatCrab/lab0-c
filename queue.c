@@ -206,39 +206,44 @@ void q_reverse(struct list_head *head)
     LIST_HEAD(new_head);
 
     struct list_head *node, *safe;
-    list_for_each_safe (node, safe, head) {
-        list_move(node, &new_head);
-    }
+    list_for_each_safe (node, safe, head)
+        list_move(node, head);
 
     /* 將反轉後的串鏈拼接到原始 head */
     list_splice(&new_head, head);
 }
 
+/* Reverse the nodes of the list k at a time */
 void q_reverseK(struct list_head *head, int k)
 {
-    // https://leetcode.com/problems/reverse-nodes-in-k-group/
-
     if (!head || list_empty(head) || list_is_singular(head))
         return;
 
+    struct list_head *list_tail = head;
     struct list_head *curr = head->next;
     int count = q_size(head);
 
     while (count >= k) {
         LIST_HEAD(tmp);
-        struct list_head *prev = head;
-
         for (int i = 0; i < k; i++) {
             struct list_head *next_node = curr->next;
-            list_move(curr, &tmp);
+            list_move_tail(curr, &tmp);
             curr = next_node;
         }
 
-        list_splice(&tmp, prev);
+        q_reverse(&tmp);
+        list_splice(&tmp, list_tail);
+
+        /* 將反轉的終點更新 */
+        for (int i = 0; i < k; i++)
+            list_tail = list_tail->next;
+
         count -= k;
     }
 }
 
+/* Merges two sorted circular doubly-linked lists into 'left'
+ * in ascending / descending (descend=true) order, clearing 'right'. */
 void q_merge_two(struct list_head *left, struct list_head *right, bool descend)
 {
     if (!left || !right || list_empty(right))
@@ -305,39 +310,6 @@ void q_sort(struct list_head *head, bool descend)
 
 /* Remove every node which has a node with a strictly less value anywhere to
  * the right side of it */
-int q_ascend(struct list_head *head)
-{
-    // https://leetcode.com/problems/remove-nodes-from-linked-list/
-
-    if (!head || list_empty(head))
-        return 0;
-
-    if (list_is_singular(head))
-        return 1;
-
-    LIST_HEAD(stack);
-    struct list_head *node, *safe;
-
-    list_for_each_safe (node, safe, head) {
-        const element_t *curr = list_entry(node, element_t, list);
-        while (!list_empty(&stack)) {
-            element_t *top = list_last_entry(&stack, element_t, list);
-            if (strcmp(curr->value, top->value) < 0) {
-                list_del(&top->list);
-                q_release_element(top);
-            } else {
-                break;
-            }
-        }
-        list_move(node, &stack);
-    }
-
-    list_splice_init(&stack, head);
-    return q_size(head);
-}
-
-/* Remove every node which has a node with a strictly greater value anywhere to
- * the right side of it */
 int q_descend(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
@@ -348,25 +320,54 @@ int q_descend(struct list_head *head)
     if (list_is_singular(head))
         return 1;
 
-    LIST_HEAD(stack);
-    struct list_head *node, *safe;
+    element_t *cur = list_last_entry(head, element_t, list);
+    const char *max_value = cur->value;
+    int kept_count = 1;
 
-    list_for_each_safe (node, safe, head) {
-        const element_t *curr = list_entry(node, element_t, list);
-        while (!list_empty(&stack)) {
-            element_t *top = list_last_entry(&stack, element_t, list);
-            if (strcmp(curr->value, top->value) > 0) {
-                list_del(&top->list);
-                q_release_element(top);
-            } else {
-                break;
-            }
+    while (cur->list.prev != head) {
+        element_t *prev = list_last_entry(&cur->list, element_t, list);
+        if (strcmp(prev->value, max_value) > 0) {
+            max_value = prev->value;
+            kept_count++;
+            cur = prev;
+        } else {
+            list_del(&prev->list);
+            q_release_element(prev);
         }
-        list_move(node, &stack);
     }
 
-    list_splice_init(&stack, head);
-    return q_size(head);
+    return kept_count;
+}
+
+/* Remove every node which has a node with a strictly greater value anywhere to
+ * the right side of it */
+int q_ascend(struct list_head *head)
+{
+    // https://leetcode.com/problems/remove-nodes-from-linked-list/
+
+    if (!head || list_empty(head))
+        return 0;
+
+    if (list_is_singular(head))
+        return 1;
+
+    element_t *cur = list_last_entry(head, element_t, list);
+    const char *min_value = cur->value;
+    int kept_count = 1;
+
+    while (cur->list.prev != head) {
+        element_t *prev = list_last_entry(&cur->list, element_t, list);
+        if (strcmp(prev->value, min_value) < 0) {
+            min_value = prev->value;
+            kept_count++;
+            cur = prev;
+        } else {
+            list_del(&prev->list);
+            q_release_element(prev);
+        }
+    }
+
+    return kept_count;
 }
 
 /* Merge all the queues into one sorted queue, which is in ascending/descending
