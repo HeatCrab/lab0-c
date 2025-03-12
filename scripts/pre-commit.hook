@@ -100,7 +100,6 @@ RETURN=0
 # Disallow non-ASCII characters in workspace path
 workspace=$(git rev-parse --show-toplevel)
 if echo "$workspace" | grep -q "[一-龥]"; then
-<<<<<<< HEAD
   throw "The workspace path '$workspace' contains non-ASCII characters."
 fi
 
@@ -112,31 +111,17 @@ CONFLICT_FILES=$(git diff --cached --name-only -G "${CONFLICT_MARKERS}" | \
                  grep -vE '(^|/)\.git/hooks/|(^|/)(pre-commit|commit-msg|prepare-commit-msg|pre-push)\.hook$')
 if [ -n "${CONFLICT_FILES}" ]; then
   throw "Conflict markers are still present in the following files:\n%s" ${CONFLICT_FILES}
-=======
-  echo "[!] The workspace path '$workspace' contains non-ASCII characters." >&2
-  exit 1
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
 fi
 
 CLANG_FORMAT=$(which clang-format)
 if [ $? -ne 0 ]; then
-<<<<<<< HEAD
   throw "clang-format not installed. Unable to check source file format policy."
-=======
-  echo "[!] clang-format not installed. Unable to check source file format policy." >&2
-  exit 1
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
 fi
 
 CPPCHECK=$(which cppcheck)
 mkdir -p .out
 if [ $? -ne 0 ]; then
-<<<<<<< HEAD
   throw "cppcheck not installed. Unable to perform static analysis."
-=======
-  echo "[!] cppcheck not installed. Unable to perform static analysis." >&2
-  exit 1
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
 fi
 
 # Check that cppcheck's version is at least 1.90.
@@ -147,34 +132,18 @@ else
   # For version 1.x, extract the minor version and compare.
   minor_version=$(echo "$cppcheck_ver" | sed -Ee 's/Cppcheck 1\.([0-9]+)/\1/;q')
   if [ "$minor_version" -lt 90 ]; then
-<<<<<<< HEAD
     throw "cppcheck version must be at least 1.90.\n\
     See Developer Info for building cppcheck from source:\n\
         https://cppcheck.sourceforge.io/devinfo/"
-=======
-    echo "[!] cppcheck version must be at least 1.90." >&2
-    echo -e "    See Developer Info for building cppcheck from source:\n"
-    echo -e "        https://cppcheck.sourceforge.io/devinfo/" >&2
-    exit 1
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
   fi
 fi
 
 ASPELL=$(which aspell)
 if [ $? -ne 0 ]; then
-<<<<<<< HEAD
   throw "aspell not installed. Unable to do spelling check."
 fi
 if [ -z "$(aspell dump dicts | grep -E '^en$')" ]; then
   throw "aspell-en not installed. Unable to do spelling check."
-=======
-  echo "[!] aspell not installed. Unable to do spelling check." >&2
-  exit 1
-fi
-if [ -z "$(aspell dump dicts | grep -E '^en$')" ]; then
-  echo "[!] aspell-en not installed. Unable to do spelling check." >&2
-  exit 1
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
 fi
 
 DIFF=$(which colordiff)
@@ -193,7 +162,6 @@ fi
 # Get staged filenames (added, copied, or modified) into an array.
 FILES=($(git diff --cached --name-only --diff-filter=ACM))
 binary_files=()
-<<<<<<< HEAD
 
 for file in "${FILES[@]}"; do
   # Get MIME info for the file.
@@ -218,32 +186,6 @@ for FILE in $C_FILES; do
   newfile=$(mktemp ${tempdir}/${nf}.XXXXXX) || exit 1
   basename=$(basename $FILE)
 
-=======
-
-for file in "${FILES[@]}"; do
-  # Get MIME info for the file.
-  mime_info=$(file --mime "$file")
-  # Extract a friendly filename (everything before the colon).
-  name=$(file "$file" | cut -d ":" -f1)
-
-  if echo "$mime_info" | grep -qi binary; then
-    binary_files+=("$name")
-    echo "[!] '$name' appears to be a binary blob."
-  fi
-done
-
-if [ "${#binary_files[@]}" -gt 0 ]; then
-  echo "WARNING: Binary data found"
-fi
-
-FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E "\.(c|cpp|h)$")
-for FILE in $FILES; do
-  nf=$(git checkout-index --temp $FILE | cut -f 1)
-  tempdir=$(mktemp -d) || exit 1
-  newfile=$(mktemp ${tempdir}/${nf}.XXXXXX) || exit 1
-  basename=$(basename $FILE)
-
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
   source="${tempdir}/${basename}"
   mv $nf $source
   cp .clang-format $tempdir
@@ -266,34 +208,20 @@ for FILE in $FILES; do
 done
 
 if [ ! -z "${FILES[*]}" ]; then
-<<<<<<< HEAD
   echo "Following files were changed:"
-=======
-  echo "Following files need to be cleaned up:"
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
   echo "${FILES[*]}"
 fi
 
 $SHA1SUM -c scripts/checksums 2>/dev/null >/dev/null
 if [ $? -ne 0 ]; then
-<<<<<<< HEAD
   throw "You are not allowed to change the header file queue.h or list.h"
-=======
-  echo "[!] You are not allowed to change the header file queue.h or list.h" >&2
-  exit 1
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
 fi
 
 # Prevent unsafe functions
 root=$(git rev-parse --show-toplevel)
 banned="([^f]gets\()|(sprintf\()|(strcpy\()"
 status=0
-<<<<<<< HEAD
 for file in $C_FILES; do
-=======
-for file in $(git diff --staged --name-only | grep -E "\.(c|cc|cpp|h|hh|hpp)\$")
-do
->>>>>>> e224813 (Fix queue.c, queue.h, and hash scripts for lab-0)
   filepath="${root}/${file}"
   output=$(grep -nrE "${banned}" "${filepath}")
   if [ ! -z "${output}" ]; then
