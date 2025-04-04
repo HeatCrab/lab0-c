@@ -234,7 +234,7 @@ char *web_recv(int fd, struct sockaddr_in *clientaddr)
     return ret;
 }
 
-int web_eventmux(char *buf, size_t buflen)
+int web_eventmux(char *buf)
 {
     fd_set listenset;
 
@@ -257,10 +257,17 @@ int web_eventmux(char *buf, size_t buflen)
             accept(server_fd, (struct sockaddr *) &clientaddr, &clientlen);
 
         char *p = web_recv(web_connfd, &clientaddr);
-        char *buffer = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
+        // char *buffer = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
+        char *buffer =
+            "HTTP/1.1 200 OK\r\n%s%s%s%s%s%s"
+            "Content-Type: text/html\r\n\r\n"
+            "<html><head><style>"
+            "body{font-family: monospace; font-size: 13px;}"
+            "td {padding: 1.5px 6px;}"
+            "</style><link rel=\"shortcut icon\" href=\"#\">"
+            "</head><body><table>\n";
         web_send(web_connfd, buffer);
-        strncpy(buf, p, buflen);
-        buf[buflen] = '\0';
+        strncpy(buf, p, strlen(p) + 1);
         free(p);
         close(web_connfd);
         return strlen(buf);
@@ -269,3 +276,12 @@ int web_eventmux(char *buf, size_t buflen)
     FD_CLR(STDIN_FILENO, &listenset);
     return 0;
 }
+
+/*
+void send_response(int out_fd)
+{
+
+    writen(out_fd, buf, strlen(buf));
+}
+
+*/
