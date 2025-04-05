@@ -3,6 +3,8 @@ aarch
 abbrev
 abcdefghijklmnopqrstuvwxyz
 acct
+addclose
+adddup
 AddressSanitizer
 adjtime
 adjtimex
@@ -148,6 +150,7 @@ http
 https
 hv
 ih
+IFILE
 info
 init
 inotify
@@ -171,6 +174,7 @@ lchown
 ld
 leetcode
 lf
+LFILE
 lhs
 lib
 libvirt
@@ -431,6 +435,7 @@ verifier
 vfprintf
 vim
 vla
+VLEVEL
 vscode
 waitpid
 workspace
