@@ -210,7 +210,7 @@ static bool queue_insert(position_t pos, int argc, char *argv[])
 
     char *inserts = argv[1];
     if (argc == 3) {
-        if (!get_int(argv[2], &reps) || reps < 1) {
+        if (!get_int(argv[2], &reps)) {
             report(1, "Invalid number of insertions '%s'", argv[2]);
             return false;
         }
@@ -544,7 +544,7 @@ static bool do_size(int argc, char *argv[])
     bool ok = true;
     if (argc == 2) {
         if (!get_int(argv[1], &reps))
-            report(1, "Invalid number of calls to size '%s'", argv[1]);
+            report(1, "Invalid number of calls to size '%s'", argv[2]);
     }
 
     int cnt = 0;
@@ -823,8 +823,8 @@ static bool do_reverseK(int argc, char *argv[])
     error_check();
 
     if (argc == 2) {
-        if (!get_int(argv[1], &k) || k < 1) {
-            report(1, "Invalid number of K (at least 1)");
+        if (!get_int(argv[1], &k)) {
+            report(1, "Invalid number of K");
             return false;
         }
     } else {
@@ -911,6 +911,73 @@ static bool do_merge(int argc, char *argv[])
 
     q_show(3);
     return ok && !error_check();
+}
+
+/* Shuffle queue elements using Fisher-Yates algorithm */
+static bool do_shuffle(int argc, char *argv[])
+{
+    if (argc != 1) {
+        report(1, "%s takes no arguments", argv[0]);
+        return false;
+    }
+
+    if (!current || !current->q) {
+        report(3, "Warning: Calling shuffle on null queue");
+        return false;
+    }
+    error_check();
+
+    int size = q_size(current->q);
+    if (size <= 1) {
+        /* No need to shuffle if queue is empty or has one element */
+        q_show(3);
+        return true;
+    }
+
+    /* Define maximum nodes limit consistent with do_sort */
+#define MAX_NODES 100000
+    if (size > MAX_NODES) {
+        report(1, "ERROR: Queue size %d exceeds shuffle limit %d", size,
+               MAX_NODES);
+        return false;
+    }
+
+    /* Prevent memory allocation during shuffle */
+    set_noallocate_mode(true);
+    if (exception_setup(true)) {
+        /* Fixed-size array to store node pointers */
+        element_t *nodes[MAX_NODES];
+        int i = 0;
+        struct list_head *node;
+
+        /* Populate array with node pointers */
+        list_for_each(node, current->q) {
+            nodes[i++] = list_entry(node, element_t, list);
+        }
+
+        /* Fisher-Yates shuffle with high-quality random numbers */
+        for (i = size - 1; i > 0; i--) {
+            uint32_t rand_val;
+            randombytes((uint8_t *) &rand_val,
+                        sizeof(rand_val)); /* Get 32-bit random value */
+            /* Scale random value to range [0, i] without bias */
+            int j = (int) ((uint64_t) rand_val * (i + 1) / UINT32_MAX);
+            if (j > i)
+                j = i; /* Ensure j stays within bounds */
+            if (i != j) {
+                /* Swap values between nodes[i] and nodes[j] */
+                char *temp = nodes[i]->value;
+                nodes[i]->value = nodes[j]->value;
+                nodes[j]->value = temp;
+            }
+        }
+    }
+    exception_cancel();
+    set_noallocate_mode(false);
+
+    q_show(3);
+    return !error_check();
+#undef MAX_NODES
 }
 
 static bool is_circular()
@@ -1096,6 +1163,7 @@ static void console_init()
                 "");
     ADD_COMMAND(reverseK, "Reverse the nodes of the queue 'K' at a time",
                 "[K]");
+    ADD_COMMAND(shuffle, "Shuffle queue elements randomly", "");
     add_param("length", &string_length, "Maximum length of displayed string",
               NULL);
     add_param("malloc", &fail_probability, "Malloc failure probability percent",
@@ -1165,11 +1233,11 @@ static bool q_quit(int argc, char *argv[])
 
 static void usage(char *cmd)
 {
-    printf("Usage: %s [-h] [-f FILE][-v LEVEL][-l LOG\n", cmd);
+    printf("Usage: %s [-h] [-f IFILE][-v VLEVEL][-l LFILE]\n", cmd);
     printf("\t-h         Print this information\n");
-    printf("\t-f FILE   Read commands from FILE\n");
-    printf("\t-v LEVEL  Set verbosity level\n");
-    printf("\t-l LOG    Echo results to LOG\n");
+    printf("\t-f IFILE   Read commands from IFILE\n");
+    printf("\t-v VLEVEL  Set verbosity level\n");
+    printf("\t-l LFILE   Echo results to LFILE\n");
     exit(0);
 }
 
@@ -1208,6 +1276,7 @@ bool commit_exists(const char *commit_hash)
     posix_spawn_file_actions_t actions;
     if (posix_spawn_file_actions_init(&actions) != 0) {
         /* Error initializing spawn file actions */
+        perror("posix_spawn_file_actions_init");
         close(pipefd[0]);
         close(pipefd[1]);
         return false;
@@ -1216,6 +1285,7 @@ bool commit_exists(const char *commit_hash)
     /* Redirect child's stdout to the pipe's write end */
     if (posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDOUT_FILENO) !=
         0) {
+        perror("posix_spawn_file_actions_adddup2");
         posix_spawn_file_actions_destroy(&actions);
         close(pipefd[0]);
         close(pipefd[1]);
@@ -1225,6 +1295,7 @@ bool commit_exists(const char *commit_hash)
     /* Close unused pipe ends in the child */
     if (posix_spawn_file_actions_addclose(&actions, pipefd[0]) != 0 ||
         posix_spawn_file_actions_addclose(&actions, pipefd[1]) != 0) {
+        perror("posix_spawn_file_actions_addclose");
         posix_spawn_file_actions_destroy(&actions);
         close(pipefd[0]);
         close(pipefd[1]);
@@ -1401,7 +1472,7 @@ int main(int argc, char *argv[])
         }
         case 'l':
             strncpy(lbuf, optarg, BUFSIZE);
-            lbuf[BUFSIZE - 1] = '\0';
+            buf[BUFSIZE - 1] = '\0';
             logfile_name = lbuf;
             break;
         default:
